@@ -7,24 +7,37 @@ import (
 	"strings"
 )
 
-// HtmlDocument represents an entire HTML document.
+// HtmlDocument struct represents an entire HTML document.
 type HtmlDocument struct {
 	Language string
 	Head     HtmlHead
 	Body     Body
 }
 
+// Body represents the body of a document.
 type Body struct {
 	Elements []Element
 }
 
-// AppendChild for document body
+// This function appends an elemement to a document body.
 func (body *Body) AppendChild(element Element) {
 	body.Elements = append(body.Elements, element)
 }
 
-// Calls HtmlDocument.GemerateMarkup function and writes it to specified file.
-// Specify .html as the extension for filename to export as html file
+// This function creates and returns a blank document skeleton.
+func BlankDocument() HtmlDocument {
+	return HtmlDocument{
+		Head: HtmlHead{
+			Title:   "",
+			Metas:   Metas{},
+			Links:   Links{},
+			Scripts: Scripts{},
+		},
+		Body: Body{},
+	}
+}
+
+// This function generates markup for an HtmlDocument and exports it to the file specified. Export as .html.
 func (doc HtmlDocument) ExportMarkup(filename string) {
 	html := doc.GenerateMarkup()
 	fileName := filename
@@ -34,29 +47,29 @@ func (doc HtmlDocument) ExportMarkup(filename string) {
 	}
 }
 
-// GenerateMarkup() generates the complete HTML document, beginning with webapps credits
+// This function generates markup for an HtmlDocument and returns it as a string.
 func (doc HtmlDocument) GenerateMarkup() string {
 	var sb strings.Builder
 
-	// Add comments at the top of the document
-	sb.WriteString("<!--\n")
+	// Add comments at the top of the document.
+	sb.WriteString("<!--")
 	sb.WriteString("Credit newrennie/webapps")
 	sb.WriteString("-->\n")
 
-	//Begin html markup generation
+	//Begin html markup generation.
 	sb.WriteString("<!DOCTYPE html>\n")
 
-	//Insert specified language else insert en
+	//Insert specified language else insert en.
 	if doc.Language != "" {
 		sb.WriteString(fmt.Sprintf("<html lang=\"%v\">\n", doc.Language))
 	} else {
 		sb.WriteString("<html lang=\"en\">\n")
 	}
 
-	//Generate Document Head
+	//Let the document head generate itself.
 	sb.WriteString(doc.Head.GenerateMarkup())
 
-	//Begin document body markup generation
+	//Begin document body
 	sb.WriteString("<body>\n")
 
 	//Let each element return their own markup generation
@@ -64,7 +77,7 @@ func (doc HtmlDocument) GenerateMarkup() string {
 		sb.WriteString(elem.GenerateMarkup() + "\n")
 	}
 
-	//End document body markup generation with closing tag
+	//End document body with closing tag
 	sb.WriteString("</body>\n")
 
 	//End html markup generation with closing tag

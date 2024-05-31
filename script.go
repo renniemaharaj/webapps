@@ -1,6 +1,6 @@
 package webapps
 
-//Scripts tag of []Script for document head
+//Scripts tag represents the entire script section of a document head
 type Scripts struct {
 	ScriptTags []Script
 }
@@ -13,7 +13,17 @@ type Script struct {
 	Inline string
 }
 
-// Create functions for easy adding and removing script tags
+// This function will append a script struct to a document head script struct.
 func (scripts *Scripts) AppendScript(script Script) {
 	scripts.ScriptTags = append(scripts.ScriptTags, script)
+}
+
+//This function will return a single script tag.
+func MakeScript(src string, async, deferring bool, inline string) Script {
+	return Script{
+		Src:    src,
+		Async:  async,
+		Defer:  deferring,
+		Inline: inline,
+	}
 }

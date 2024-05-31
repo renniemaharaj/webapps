@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// HtmlHead represents the head section of an HTML document.
+// HtmlHead struct represents the entire head section of a document.
 type HtmlHead struct {
 	Title       string
 	Description string
@@ -16,21 +16,21 @@ type HtmlHead struct {
 	Scripts     Scripts
 }
 
-// GenerateMarkup for HtmlHead generates the HTML for the head section.
+// This function generates the markup for an HtmlHead struct.
 func (head HtmlHead) GenerateMarkup() string {
 	var sb strings.Builder
 
-	//Begin markup generation of head with opening tag
+	//Begin markup generation of head with opening tag.
 	sb.WriteString("<head>\n")
 
-	//Place title tag if title was given else default title
+	//Place title if it was given, otherwise place a default one.
 	if head.Title != "" {
 		sb.WriteString(fmt.Sprintf("  <title>%s</title>\n", head.Title))
 	} else {
 		sb.WriteString("<title>webapps</title>\n")
 	}
 
-	//Generate meta tags markup
+	//Generate all other meta tags.
 	for _, meta := range head.Metas.MetaTags {
 		if meta.Content != "" {
 			sb.WriteString(fmt.Sprintf("  <meta %s=\"%s\" content=\"%s\">\n", meta.Attribute, meta.Value, meta.Content))
@@ -40,7 +40,7 @@ func (head HtmlHead) GenerateMarkup() string {
 		}
 	}
 
-	//Generate links tags markup
+	//Generate link tags markup.
 	for _, link := range head.Links.LinkTags {
 		sb.WriteString(fmt.Sprintf("  <link rel=\"%s\" href=\"%s\">\n", link.Rel, link.Href))
 	}
@@ -62,7 +62,7 @@ func (head HtmlHead) GenerateMarkup() string {
 		}
 	}
 
-	//End Html head markup generation with closing tag
+	//End Html head markup generation with closing tag.
 	sb.WriteString("</head>\n")
 
 	return sb.String()

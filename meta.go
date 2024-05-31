@@ -7,12 +7,21 @@ type MetaTag struct {
 	Content   string
 }
 
-// type MetaTags
+// Type Metas represents the entire meta section of a document head
 type Metas struct {
 	MetaTags []MetaTag
 }
 
-// Create functions for easy adding and removing meta tags
+// This function appends a meta tag to the metas struct of a document head.
 func (metas *Metas) AppendMeta(metatag MetaTag) {
 	metas.MetaTags = append(metas.MetaTags, metatag)
+}
+
+//Returns a simple meta tag [name content]
+func MakeMeta(attribute, value, content string) MetaTag {
+	return MetaTag{
+		Attribute: attribute,
+		Value:     value,
+		Content:   content,
+	}
 }
