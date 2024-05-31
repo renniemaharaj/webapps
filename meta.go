@@ -17,7 +17,7 @@ func (metas *Metas) AppendMeta(metatag MetaTag) {
 	metas.MetaTags = append(metas.MetaTags, metatag)
 }
 
-//Returns a simple meta tag [name content]
+//Returns a meta tag <meta attribute="value" content="content">. Omit content if necessary
 func MakeMeta(attribute, value, content string) MetaTag {
 	return MetaTag{
 		Attribute: attribute,
