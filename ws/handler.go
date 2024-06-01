@@ -32,28 +32,38 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		//This variable will hold the data from body
 		var data map[string]interface{}
 
-		err = json.Unmarshal(body, &data) // Unmarshals the JSON into a slice variable
+		// Unmarshals the JSON into a slice variable. We use pointers here.
+		err = json.Unmarshal(body, &data)
+
+		//Verify json integrity and respond with bad request.
+		if err == nil {
+
+			//Create the request recieved event
+			requestevent := JsonBasedRequestEvent{
+				Handled: false,
+				Client:  client,
+				Data:    data,
+				Writer:  w,
+			}
+
+			// Send json request event through channel
+			jsonbasedrequesteventchannel <- requestevent
+
+			if requestevent.PreventDefault {
+				return
+			}
+
+			// Log the entity information
+			log.Printf("\nClient: %+v, triggered InvalidPathEvent sending request: %v", client.IPAddress, requestevent.Data)
+		}
+
 		if err != nil {
-			log.Print(err.Error())
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			log.Printf("\nGot bad json from client:%v", client.IPAddress)
 			return
 		}
-
-		//Create the request recieved event
-		requestevent := RequestRecievedEvent{
-			Handled: false,
-			Client:  client,
-			Data:    data,
-			Writer:  w,
-		}
-
-		// Log the entity information
-		log.Printf("\nTriggering client: %+v sending request: %v", client, requestevent)
-
-		// TriggerRequestEvent()
-		TriggerRequestEvent(EventChannel, requestevent, false)
 
 		return
 	}
@@ -63,9 +73,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Extract the requested file path from the URL
 		requestedPath := r.URL.Path
 
-		// If requestPath is '/' check for index.html or php.html and return
+		//Create the invalidpathevent
+		invalidpathevent := InvalidPathEvent{
+			Url:            requestedPath,
+			Optional:       nil,
+			Handled:        false,
+			Client:         client,
+			Writer:         w,
+			PreventDefault: false,
+		}
+
+		// If requestPath is '/' check for index.html or php.html.
 		if requestedPath == "/" {
-			requestedPath = "/index.html"
+			if osfiles.FileExists("/index.html") {
+				requestedPath = "/index.html"
+			} else {
+				invalidpatheventchannel <- &invalidpathevent
+			}
+
 		}
 
 		// Construct the file path
@@ -73,12 +98,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Check if the file exists
 		if !osfiles.FileExists(filePath) {
+
+			//Send invalid path even through channel
+			invalidpatheventchannel <- &invalidpathevent
+
+			//Increment waitgroup in advance
+			eventswait.Add(1)
+
+			//Wait for handler to decrement
+			eventswait.Wait()
+		}
+
+		log.Print("Sync Wait finished..")
+
+		//Check if PreventDefault was set to true and return else continue
+		if invalidpathevent.PreventDefault {
+			if invalidpathevent.Optional == nil {
+				// Log the entity information
+				log.Printf("Client: %v caused InvalidPathEvent for: %v", client.IPAddress, invalidpathevent.Url)
+			}
+		} else {
 			http.NotFound(w, r)
 			return
 		}
 
 		// Determine the content type based on the file extension
 		var contentType string
+
 		switch strings.ToLower(filepath.Ext(filePath)) {
 		case ".html":
 			contentType = "text/html"
@@ -96,14 +142,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			contentType = "text/plain"
 		}
 
-		// Set the content type
-		w.Header().Set("Content-Type", contentType)
-
+		if invalidpathevent.ContentType != "" {
+			contentType = invalidpathevent.ContentType
+		}
 		// Read the content of the file
 		fileContent, err := os.ReadFile(filePath)
+
 		if err != nil {
-			log.Fatalf("Could not read %s: %s\n", filePath, err.Error())
+			if invalidpathevent.Optional != nil {
+				fileContent = invalidpathevent.Optional
+			}
 		}
+
+		// Set the content type
+		w.Header().Set("Content-Type", contentType)
 
 		// Write the file content to the response
 		fmt.Fprint(w, string(fileContent))

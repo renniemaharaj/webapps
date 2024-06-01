@@ -2,24 +2,43 @@ package ws
 
 import (
 	"net/http"
+	"sync"
 )
 
-var EventChannel chan<- RequestRecievedEvent
+var eventswait sync.WaitGroup
 
-// Events are currently broken. Events are sent, the Handler(), ends before external handling
-// Function to trigger events with recursion
-func TriggerRequestEvent(eventChan chan<- RequestRecievedEvent, event RequestRecievedEvent, unhandled bool) {
-	eventChan <- event
+var jsonbasedrequesteventchannel chan<- JsonBasedRequestEvent
+
+// Struct representing request receieved event.
+type JsonBasedRequestEvent struct {
+	Data           interface{}
+	Client         Client
+	Writer         http.ResponseWriter
+	Handled        bool
+	PreventDefault bool
 }
 
-func AttachEventChannel(eventChan chan<- RequestRecievedEvent) {
-	EventChannel = eventChan
+var invalidpatheventchannel chan<- *InvalidPathEvent
+
+// Struct representing request receieved event.
+type InvalidPathEvent struct {
+	Url            string
+	Parameters     string
+	Client         Client
+	Writer         http.ResponseWriter
+	Handled        bool
+	Optional       []byte
+	ContentType    string
+	PreventDefault bool
 }
 
-// represents a Request Receieved Event
-type RequestRecievedEvent struct {
-	Handled bool
-	Data    interface{}
-	Client  Client
-	Writer  http.ResponseWriter
+// This functions attaches an event channel to the web server. Use pointers.
+func AttachJsonBasedRequestEventChannel(eventChan chan<- JsonBasedRequestEvent) {
+	jsonbasedrequesteventchannel = eventChan
+}
+
+// This functions attaches an event channel to the web server. Use pointers.
+func AttachInvalidPathEventChannel(eventChan chan<- *InvalidPathEvent) *sync.WaitGroup {
+	invalidpatheventchannel = eventChan
+	return &eventswait
 }
