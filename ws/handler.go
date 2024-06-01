@@ -14,6 +14,10 @@ import (
 
 // Handler handles incoming HTTP requests
 func Handler(w http.ResponseWriter, r *http.Request) {
+
+	// Algorithm for Handling http requests.
+	// 1) First we will create a client struct from the request information.
+
 	// Create the client
 	client := Client{
 		IPAddress:  GetIPAddress(r),
@@ -22,7 +26,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		RequestURI: r.RequestURI,
 	}
 
-	// Handle POST requests
+	// 2) Next we will handle methods
+
+	// Handling methods, we will first handle post method.
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 
@@ -38,7 +44,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Unmarshals the JSON into a slice variable. We use pointers here.
 		err = json.Unmarshal(body, &data)
 
-		//Verify json integrity and respond with bad request.
+		//Verify json integrity and cause JsonBasedRequestEevnt
 		if err == nil {
 
 			//Create the request recieved event
@@ -52,24 +58,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Send json request event through channel
 			jsonbasedrequesteventchannel <- requestevent
 
+			//Increment waitgroup in advance
+			eventswait.Add(1)
+
+			//Wait for handler to decrement
+			eventswait.Wait()
+
+			log.Print("Sync Wait finished for JsonBasedRequestEevnt..")
+
 			if requestevent.PreventDefault {
 				return
 			}
 
 			// Log the entity information
-			log.Printf("\nClient: %+v, triggered InvalidPathEvent sending request: %v", client.IPAddress, requestevent.Data)
-		}
-
-		if err != nil {
-			log.Printf("\nGot bad json from client:%v", client.IPAddress)
-			return
+			log.Printf("\nClient: %v triggered JsonBasedRequestEvent", client.IPAddress)
 		}
 
 		return
 	}
 
-	// Handle only GET requests for static files
+	// We will now handle get method for static and abstract file paths
 	if r.Method == http.MethodGet {
+
 		// Extract the requested file path from the URL
 		requestedPath := r.URL.Path
 
@@ -85,21 +95,71 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// If requestPath is '/' check for index.html or php.html.
 		if requestedPath == "/" {
-			if osfiles.FileExists("/index.html") {
+			if osfiles.FileExists("index.html") {
 				requestedPath = "/index.html"
+				log.Printf("Client: %v was served existing index.html", client.IPAddress)
 			} else {
+				//Send invalid path even through channel
 				invalidpatheventchannel <- &invalidpathevent
+
+				//Increment waitgroup in advance
+				eventswait.Add(1)
+
+				//Wait for handler to decrement
+				eventswait.Wait()
 			}
 
+			log.Print("Sync Wait finished..")
 		}
 
 		// Construct the file path
 		filePath := filepath.Join(".", requestedPath)
 
+		//Otherwise, we're either handling a legitimate url path or an abstract one
+
+		//Define variables fileContent for response
+		var fileContent []byte
+
+		// Define the content type to respond client
+		var contentType string
+
+		//Check if file exists and handle serving of existing files
+		if osfiles.FileExists(filePath) {
+			switch strings.ToLower(filepath.Ext(filePath)) {
+			case ".html":
+				contentType = "text/html"
+			case ".css":
+				contentType = "text/css"
+			case ".js":
+				contentType = "application/javascript"
+			case ".png":
+				contentType = "image/png"
+			case ".jpg", ".jpeg":
+				contentType = "image/jpeg"
+			case ".gif":
+				contentType = "image/gif"
+			default:
+				contentType = "text/plain"
+			}
+
+			//Define error variable for reading file
+			var err error
+
+			//Populate file contents
+			fileContent, err = os.ReadFile(filePath)
+
+			if err != nil {
+				log.Printf("Something went wrong reading from file: %v ", filePath)
+			}
+		}
+
 		// Check if the file exists
 		if !osfiles.FileExists(filePath) {
 
-			//Send invalid path even through channel
+			//Log filepart not found so causing InvalidPathEvent
+			log.Printf("Client: %v caused InvalidPathEvent for: %v", client.IPAddress, invalidpathevent.Url)
+
+			//Send InvalidPathEvent through channel
 			invalidpatheventchannel <- &invalidpathevent
 
 			//Increment waitgroup in advance
@@ -107,50 +167,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			//Wait for handler to decrement
 			eventswait.Wait()
-		}
 
-		log.Print("Sync Wait finished..")
+			//Log sync wait finish
+			log.Print("Sync Wait finished..")
 
-		//Check if PreventDefault was set to true and return else continue
-		if invalidpathevent.PreventDefault {
-			if invalidpathevent.Optional == nil {
-				// Log the entity information
-				log.Printf("Client: %v caused InvalidPathEvent for: %v", client.IPAddress, invalidpathevent.Url)
+			//Check if PreventDefault was ignored and requesting url is 404
+			if !invalidpathevent.PreventDefault && !osfiles.FileExists(filePath) {
+				http.NotFound(w, r)
+				return
 			}
-		} else {
-			http.NotFound(w, r)
-			return
-		}
 
-		// Determine the content type based on the file extension
-		var contentType string
+			//Check if PreventDefault was set and no optional data was given
+			if invalidpathevent.PreventDefault && invalidpathevent.Optional == nil {
+				http.NotFound(w, r)
+				return
+			}
 
-		switch strings.ToLower(filepath.Ext(filePath)) {
-		case ".html":
-			contentType = "text/html"
-		case ".css":
-			contentType = "text/css"
-		case ".js":
-			contentType = "application/javascript"
-		case ".png":
-			contentType = "image/png"
-		case ".jpg", ".jpeg":
-			contentType = "image/jpeg"
-		case ".gif":
-			contentType = "image/gif"
-		default:
-			contentType = "text/plain"
-		}
+			//Check if prevent default was set and content type was given
+			if invalidpathevent.PreventDefault && invalidpathevent.ContentType != "" {
+				contentType = invalidpathevent.ContentType
 
-		if invalidpathevent.ContentType != "" {
-			contentType = invalidpathevent.ContentType
-		}
-		// Read the content of the file
-		fileContent, err := os.ReadFile(filePath)
+				if invalidpathevent.Optional != nil {
+					fileContent = invalidpathevent.Optional
 
-		if err != nil {
-			if invalidpathevent.Optional != nil {
-				fileContent = invalidpathevent.Optional
+					//Log served client with abstract path
+					log.Printf("Client: %v was served abstract file path for: %v", client.IPAddress, invalidpathevent.Url)
+				}
 			}
 		}
 
