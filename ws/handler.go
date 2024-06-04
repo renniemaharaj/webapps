@@ -39,7 +39,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//This variable will hold the data from body
-		var data map[string]interface{}
+		var data map[string]string
 
 		// Unmarshals the JSON into a slice variable. We use pointers here.
 		err = json.Unmarshal(body, &data)
@@ -56,7 +56,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Send json request event through channel
-			jsonbasedrequesteventchannel <- requestevent
+			jsonbasedrequesteventchannel <- &requestevent
 
 			//Increment waitgroup in advance
 			eventswait.Add(1)
@@ -71,10 +71,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Log the entity information
-			log.Printf("\nClient: %v triggered JsonBasedRequestEvent", client.IPAddress)
+			log.Printf("Client: %v triggered JsonBasedRequestEvent", client.IPAddress)
+
+			return
 		}
 
-		return
+		log.Printf("Couldn't cast: %v to map[string]string", body)
 	}
 
 	// We will now handle get method for static and abstract file paths

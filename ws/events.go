@@ -7,11 +7,11 @@ import (
 
 var eventswait sync.WaitGroup
 
-var jsonbasedrequesteventchannel chan<- JsonBasedRequestEvent
+var jsonbasedrequesteventchannel chan<- *JsonBasedRequestEvent
 
 // Struct representing request receieved event.
 type JsonBasedRequestEvent struct {
-	Data           interface{}
+	Data           map[string]string
 	Client         Client
 	Writer         http.ResponseWriter
 	Handled        bool
@@ -33,8 +33,9 @@ type InvalidPathEvent struct {
 }
 
 // This functions attaches an event channel to the web server. Use pointers.
-func AttachJsonBasedRequestEventChannel(eventChan chan<- JsonBasedRequestEvent) {
+func AttachJsonBasedRequestEventChannel(eventChan chan<- *JsonBasedRequestEvent) *sync.WaitGroup {
 	jsonbasedrequesteventchannel = eventChan
+	return &eventswait
 }
 
 // This functions attaches an event channel to the web server. Use pointers.
