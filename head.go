@@ -33,10 +33,10 @@ func (head HtmlHead) GenerateMarkup() string {
 	//Generate all other meta tags.
 	for _, meta := range head.Metas.MetaTags {
 		if meta.Content != "" {
-			sb.WriteString(fmt.Sprintf("  <meta %s=\"%s\" content=\"%s\">\n", meta.Attribute, meta.Value, meta.Content))
+			sb.WriteString(fmt.Sprintf("  <meta %s=\"%s\" content=\"%s\">\n", meta.Attribute, strings.Join(meta.Values, ","), meta.Content))
 		}
 		if meta.Content == "" {
-			sb.WriteString(fmt.Sprintf("  <meta %s=\"%s\">\n", meta.Attribute, meta.Value))
+			sb.WriteString(fmt.Sprintf("  <meta %s=\"%s\">\n", meta.Attribute, strings.Join(meta.Values, ",")))
 		}
 	}
 

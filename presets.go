@@ -5,8 +5,11 @@ func DefaultDocument() HtmlDocument {
 	var mydocument = BlankDocument()
 
 	var metas = &Metas{}
-	metas.AppendMeta(MakeMeta("charset", "UTF-8", ""))
-	metas.AppendMeta(MakeMeta("name", "viewport", "width=device-width, initial-scale=1.0"))
+	var values = make([]string, 1)
+	values[0] = "UTF-8"
+	metas.AppendMeta(MakeMeta("charset", values, ""))
+	values[0] = "viewport"
+	metas.AppendMeta(MakeMeta("name", values, "width=device-width, initial-scale=1.0"))
 	mydocument.Head.Metas = *metas
 	return mydocument
 }

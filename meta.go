@@ -3,7 +3,7 @@ package webapps
 // MetaTag represents a meta tag in the HTML head.
 type MetaTag struct {
 	Attribute string
-	Value     string
+	Values    []string
 	Content   string
 }
 
@@ -18,10 +18,32 @@ func (metas *Metas) AppendMeta(metatag MetaTag) {
 }
 
 //Returns a meta tag <meta attribute="value" content="content">. Omit content if necessary
-func MakeMeta(attribute, value, content string) MetaTag {
+func MakeMeta(attribute string, values []string, content string) MetaTag {
 	return MetaTag{
 		Attribute: attribute,
-		Value:     value,
+		Values:    values,
 		Content:   content,
 	}
+}
+
+// TypicalMeta is a type for defining typical meta tag names
+type TypicalMeta string
+
+// Predefined typical meta tag names
+const (
+	Description TypicalMeta = "description"
+	Keywords    TypicalMeta = "keywords"
+	Author      TypicalMeta = "author"
+	Charset     TypicalMeta = "charset"
+	viewport    TypicalMeta = "viewport"
+)
+
+// AppendTypicalMeta appends a typical meta tag to the Metas struct
+func (metas *Metas) AppendTypicalMeta(typicalMeta TypicalMeta, values []string, content string) {
+	meta := MetaTag{
+		Attribute: string(typicalMeta),
+		Values:    values,
+		Content:   content,
+	}
+	metas.MetaTags = append(metas.MetaTags, meta)
 }
