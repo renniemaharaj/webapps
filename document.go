@@ -1,9 +1,11 @@
 package webapps
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -45,6 +47,33 @@ func (doc HtmlDocument) ExportMarkup(filename string) {
 	if err != nil {
 		log.Fatalf("Failed to write file: %v", err)
 	}
+}
+
+// This function will run an API call on the HtmlDocument and return its markup representation
+func (doc HtmlDocument) AIGenerateMarkup() string {
+	// Path to the Python script
+	const mScript = "m-response.py"
+
+	// Convert struct to JSON
+	jsonData, err := json.Marshal(doc)
+	if err != nil {
+		log.Fatalf("Failed to marshal struct: %s", err)
+	}
+
+	// Convert JSON to string
+	jsonString := string(jsonData)
+
+	// Command to run the Python script
+	cmd := exec.Command("python3", mScript, jsonString)
+
+	// Get the output from the command
+	output, err := cmd.Output()
+	if err != nil {
+		log.Fatalf("Failed to execute command: %s", err)
+	}
+
+	// Return the output
+	return string(output)
 }
 
 // This function generates markup for an HtmlDocument and returns it as a string.
